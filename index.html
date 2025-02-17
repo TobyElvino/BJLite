@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BJ - CSN LITE</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background-color: #111; 
+            color: white; 
+            margin: 0; 
+            padding: 0; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            transition: background-color 0.5s;
+        }
+        .container { 
+            margin-top: 50px; 
+            padding: 20px; 
+            background: rgba(255, 255, 255, 0.1); 
+            border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
+            width: 400px; 
+            text-align: center; 
+        }
+        .btn { 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            margin: 10px; 
+            border: none; 
+            border-radius: 5px; 
+            transition: 0.3s; 
+        }
+        .btn-start { background: #28a745; color: white; box-shadow: 0 0 10px #28a745; }
+        .game-area { display: flex; justify-content: space-between; margin-top: 20px; }
+        .player, .dealer { width: 45%; text-align: center; }
+        .chandelier { 
+            width: 80px; 
+            height: 120px; 
+            background: gold; 
+            margin: 20px auto; 
+            cursor: pointer; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 20px; 
+            box-shadow: 0 0 15px gold; 
+        }
+        .chandelier.disabled { opacity: 0.5; pointer-events: none; } 
+        .input-bet { width: 50px; padding: 5px; font-size: 16px; text-align: center; background: black; color: white; border: 1px solid white; }
+        .notificationW, .notificationL, .notificationP { 
+            margin-top: 10px; 
+            font-size: 18px; 
+            display: none; 
+        }
+        .notificationW { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+        .notificationL { color: #ff0505; text-shadow: 0 0 10px #ff0202; }
+        .notificationP { color: #9400D3; text-shadow: 0 0 10px #9400D3; }
+        .coin-saldo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgb(10, 170, 182);
+            display: flex;
+            align-items: center;
+        }
+        .coin-saldo img {
+            width: 24px;
+            height: 24px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="coin-saldo">
+        <img src="/dl.png" alt="coin logo"> 
+        <span id="DL">10</span> DL
+    </div>
+
+    <div class="container"> 
+        <h2>BJ Lite</h2>
+        <div class="game-area">
+            <div class="player">
+                <h3>Player</h3>
+                <p>Your Gems: <span id="playerGems">0</span></p>
+                <p>Jumlah Clik Tersisa: <span id="playerClicks">3</span></p>
+                <div class="chandelier" id="playerChandelier" onclick="clickChandelier()">💎</div>
+            </div>
+            <div class="dealer">
+                <h3>Admin</h3>
+                <p>Dealer Gems: <span id="dealerGems">0</span></p>
+                <p>Jumlah Clik Tersisa: <span id="dealerClicks">3</span></p>
+                <div class="chandelier">💎</div>
+            </div>
+        </div>
+        <p>Drop Jumlah DL : <input type="number" id="betAmount" class="input-bet" min="1" value="10"></p>
+        <button class="btn btn-start" onclick="startGame()" id="startButton">Start Game</button>
+        <p id="notificationW" class="notificationW"></p>
+        <p id="notificationL" class="notificationL"></p>
+        <p id="notificationP" class="notificationP"></p>
+    </div>
+
+    <script>
+        let DL = localStorage.getItem("DL");
+        if (DL === null) {
+            DL = 10;
+            localStorage.setItem("DL", DL);
+        } else {
+            DL = parseInt(DL);
+        }
+    
+        let betAmount = 10;
+        let playerGems = 0;
+        let dealerGems = 0;
+        let playerClicks = 3;
+        let dealerClicks = 3;
+        let gameActive = false;
+    
+        function startGame() {
+            if (gameActive) return; 
+            betAmount = parseInt(document.getElementById("betAmount").value);
+            if (betAmount <= 0 || isNaN(betAmount)) {
+                showNotification("Invalid bet amount!", "notificationP");
+                return;
+            }
+            if (DL < betAmount) {
+                showNotification("Diamond Lock tidak cukup!", "notificationP");
+                return;
+            }
+            DL -= betAmount;
+            playerGems = 0;
+            dealerGems = 0;
+            playerClicks = 3;
+            dealerClicks = 3;
+            gameActive = true;
+            showNotification("Game dimulai!", "notificationW");
+            document.getElementById("startButton").disabled = true;
+            updateDisplay();
+            saveGame();
+        }
+    
+        function clickChandelier() {
+            if (!gameActive || playerClicks === 0) return;
+            let playerGemValue = Math.floor(Math.random() * 10) + 1;
+            playerGems += playerGemValue;
+            playerClicks--;
+            updateDisplay();
+            if (playerGems > 21) {
+                endGame(false);
+                return;
+            }
+            setTimeout(dealerTurn, 500);
+        }
+    
+        function dealerTurn() {
+            if (!gameActive || dealerClicks === 0) return;
+            let dealerGemValue = Math.floor(Math.random() * 10) + 1;
+            dealerGems += dealerGemValue;
+            dealerClicks--;
+            updateDisplay();
+            if (dealerClicks === 0) {
+                checkWinner();
+            }
+        }
+    
+        function checkWinner() {
+            if (playerGems > 21) {
+                endGame(false);
+            } else if (dealerGems > 21 || playerGems > dealerGems) {
+                endGame(true);
+            } else {
+                endGame(false);
+            }
+        }
+    
+        function endGame(playerWon) {
+            gameActive = false;
+            document.getElementById("startButton").disabled = false;
+            if (playerWon) {
+                showNotification("You win! + " + (betAmount * 2) + " Diamond Lock!", "notificationW");
+                DL += betAmount * 2;
+                flashBackground("gray");
+            } else {
+                showNotification("You lost! " + betAmount + " Diamond Lock!", "notificationL");
+                flashBackground("red");
+            }
+            updateDisplay();
+            saveGame();
+        }
+    
+        function flashBackground(color) {
+            document.body.style.backgroundColor = color; 
+            setTimeout(() => document.body.style.backgroundColor = "#111", 500);
+        }
+    
+        function showNotification(message, type) {
+            let notification = document.getElementById(type);
+            notification.innerText = message;
+            notification.style.display = "block";
+            setTimeout(() => notification.style.display = "none", 2000);
+        }
+    
+        function updateDisplay() {
+            document.getElementById("DL").innerText = DL;
+            document.getElementById("playerGems").innerText = playerGems;
+            document.getElementById("dealerGems").innerText = dealerGems;
+            document.getElementById("playerClicks").innerText = playerClicks;
+            document.getElementById("dealerClicks").innerText = dealerClicks;
+        }
+    
+        function saveGame() {
+            localStorage.setItem("DL", DL);
+        }
+        
+        window.onload = updateDisplay;
+    </script>
+    
+    
+</body>
+</html>
+
+<!-- THIS CODE BY MBHIWW -->
